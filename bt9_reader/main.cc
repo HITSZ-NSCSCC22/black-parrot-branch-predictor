@@ -2,7 +2,7 @@
 //  Copyright 2015 Samsung Austin Semiconductor, LLC.                //
 ///////////////////////////////////////////////////////////////////////
 
-//Description : Main file for CBP2016 
+// Description : Main file for CBP2016
 
 #include <assert.h>
 #include <stdlib.h>
@@ -17,10 +17,11 @@ using namespace std;
 //#include "bt9.h"
 #include "bt9_reader.h"
 
+int main(int argc, char *argv[])
+{
 
-int main(int argc, char *argv[]) {
-
-    if (argc != 3) {
+    if (argc != 3)
+    {
         printf("usage: %s <trace> <out>\n", argv[0]);
         exit(-1);
     }
@@ -33,87 +34,125 @@ int main(int argc, char *argv[]) {
     trace_path = argv[1];
     bt9::BT9Reader bt9_reader(trace_path);
 
-
     ofstream myfile;
     myfile.open(argv[2]);
-
 
     UINT64 PC;
     bool branchTaken;
     UINT64 branchTarget;
+    UINT64 trace_length_cnt = 0;
+    UINT64 instr_cnt = 0;
 
-
-    for (auto it = bt9_reader.begin(); it != bt9_reader.end(); ++it) {
+    for (auto it = bt9_reader.begin(); it != bt9_reader.end(); ++it)
+    {
 
         PC = it->getSrcNode()->brVirtualAddr();
         branchTaken = it->getEdge()->isTakenPath();
         branchTarget = it->getEdge()->brVirtualTarget();
+        instr_cnt += it->getEdge()->nonBrInstCnt();
         OpType opType;
-
 
         bt9::BrClass br_class = it->getSrcNode()->brClass();
         opType = OPTYPE_ERROR;
 
-        if ((br_class.type == bt9::BrClass::Type::UNKNOWN) && (it->getSrcNode()->brNodeIndex())) {
-            opType = OPTYPE_ERROR; //sanity check
-        } else if (br_class.type == bt9::BrClass::Type::RET) {
+        if ((br_class.type == bt9::BrClass::Type::UNKNOWN) && (it->getSrcNode()->brNodeIndex()))
+        {
+            opType = OPTYPE_ERROR; // sanity check
+        }
+        else if (br_class.type == bt9::BrClass::Type::RET)
+        {
             if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL)
                 opType = OPTYPE_RET_COND;
             else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL)
                 opType = OPTYPE_RET_UNCOND;
-            else {
+            else
+            {
                 opType = OPTYPE_ERROR;
             }
-        } else if (br_class.directness == bt9::BrClass::Directness::INDIRECT) {
-            if (br_class.type == bt9::BrClass::Type::CALL) {
+        }
+        else if (br_class.directness == bt9::BrClass::Directness::INDIRECT)
+        {
+            if (br_class.type == bt9::BrClass::Type::CALL)
+            {
                 if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL)
                     opType = OPTYPE_CALL_INDIRECT_COND;
                 else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL)
                     opType = OPTYPE_CALL_INDIRECT_UNCOND;
-                else {
+                else
+                {
                     opType = OPTYPE_ERROR;
                 }
-            } else if (br_class.type == bt9::BrClass::Type::JMP) {
+            }
+            else if (br_class.type == bt9::BrClass::Type::JMP)
+            {
                 if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL)
                     opType = OPTYPE_JMP_INDIRECT_COND;
                 else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL)
                     opType = OPTYPE_JMP_INDIRECT_UNCOND;
-                else {
+                else
+                {
                     opType = OPTYPE_ERROR;
                 }
-            } else {
+            }
+            else
+            {
                 opType = OPTYPE_ERROR;
             }
-        } else if (br_class.directness == bt9::BrClass::Directness::DIRECT) {
-            if (br_class.type == bt9::BrClass::Type::CALL) {
-                if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL) {
+        }
+        else if (br_class.directness == bt9::BrClass::Directness::DIRECT)
+        {
+            if (br_class.type == bt9::BrClass::Type::CALL)
+            {
+                if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL)
+                {
                     opType = OPTYPE_CALL_DIRECT_COND;
-                } else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL) {
+                }
+                else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL)
+                {
                     opType = OPTYPE_CALL_DIRECT_UNCOND;
-                } else {
+                }
+                else
+                {
                     opType = OPTYPE_ERROR;
                 }
-            } else if (br_class.type == bt9::BrClass::Type::JMP) {
-                if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL) {
+            }
+            else if (br_class.type == bt9::BrClass::Type::JMP)
+            {
+                if (br_class.conditionality == bt9::BrClass::Conditionality::CONDITIONAL)
+                {
                     opType = OPTYPE_JMP_DIRECT_COND;
-                } else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL) {
+                }
+                else if (br_class.conditionality == bt9::BrClass::Conditionality::UNCONDITIONAL)
+                {
                     opType = OPTYPE_JMP_DIRECT_UNCOND;
-                } else {
+                }
+                else
+                {
                     opType = OPTYPE_ERROR;
                 }
-            } else {
+            }
+            else
+            {
                 opType = OPTYPE_ERROR;
             }
-        } else {
+        }
+        else
+        {
             opType = OPTYPE_ERROR;
         }
 
+        // printf("%llx %d\n", PC, branchTaken);
+        myfile << PC << " " << branchTaken << " " << (opType >= 6 && opType <= 10) << "\n";
 
-        printf("%llx %d\n", PC, branchTaken);
-        myfile << PC << " " << branchTaken << "\n";
+        trace_length_cnt++;
+        if (trace_length_cnt >= 10000000)
+            break;
     }
 
     myfile.close();
-
+    std::stringstream ss;
+    ss << argv[2] << ".cnt";
+    myfile.open(ss.str());
+    myfile << instr_cnt << std::endl;
+    myfile.close();
 }
-
